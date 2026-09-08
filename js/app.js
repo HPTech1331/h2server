@@ -290,26 +290,41 @@ H2.isSheetsConfigured = function () {
 };
 
 /**
- * Seed localStorage once from built-in config so the UI shows values immediately.
+ * Always refresh built-in Web App URL + defaults into localStorage.
  */
 H2.applyBuiltInSheetsConfig = function () {
   var cfg = H2.getBuiltInConfig();
   try {
-    if (cfg.APPS_SCRIPT_URL && !localStorage.getItem(H2.SHEETS_URL_KEY)) {
-      localStorage.setItem(H2.SHEETS_URL_KEY, cfg.APPS_SCRIPT_URL);
+    if (cfg.APPS_SCRIPT_URL) {
+      localStorage.setItem(H2.SHEETS_URL_KEY, String(cfg.APPS_SCRIPT_URL).trim());
     }
-    if (cfg.DEFAULT_COMPANY && !localStorage.getItem(H2.SHEETS_DEFAULT_COMPANY_KEY)) {
-      localStorage.setItem(H2.SHEETS_DEFAULT_COMPANY_KEY, cfg.DEFAULT_COMPANY);
+    if (cfg.DEFAULT_COMPANY) {
+      localStorage.setItem(
+        H2.SHEETS_DEFAULT_COMPANY_KEY,
+        String(cfg.DEFAULT_COMPANY).trim()
+      );
     }
-    if (cfg.DEFAULT_PROJECT && !localStorage.getItem(H2.SHEETS_DEFAULT_PROJECT_KEY)) {
-      localStorage.setItem(H2.SHEETS_DEFAULT_PROJECT_KEY, cfg.DEFAULT_PROJECT);
+    if (cfg.DEFAULT_PROJECT) {
+      localStorage.setItem(
+        H2.SHEETS_DEFAULT_PROJECT_KEY,
+        String(cfg.DEFAULT_PROJECT).trim()
+      );
     }
   } catch (e) {}
 };
 
+H2.parseJsonSafe = function (text) {
+  try {
+    return JSON.parse(text);
+  } catch (e) {
+    return null;
+  }
+};
+
 /**
  * Send JSON to Google Apps Script web app.
- * Uses text/plain body to avoid CORS preflight issues with Apps Script.
+ * 1) CORS POST (readable response)
+ * 2) no-cors POST fallback (data still arrives; response opaque)
  */
 H2.sheetsSend = function (body) {
   var url = H2.getSheetsUrl();
@@ -328,24 +343,82 @@ H2.sheetsSend = function (body) {
   })
     .then(function (res) {
       return res.text().then(function (text) {
-        try {
-          return JSON.parse(text);
-        } catch (e) {
-          return { ok: res.ok, raw: text };
-        }
+        var parsed = H2.parseJsonSafe(text);
+        if (parsed) return parsed;
+        return { ok: res.ok, raw: text };
       });
     })
-    .catch(function (err) {
-      console.warn("Google Sheets send failed", err);
-      return { ok: false, error: String(err && err.message ? err.message : err) };
+    .catch(function () {
+      return fetch(url, {
+        method: "POST",
+        mode: "no-cors",
+        body: payload,
+      })
+        .then(function () {
+          return {
+            ok: true,
+            opaque: true,
+            note: "sent_via_no_cors",
+          };
+        })
+        .catch(function (err2) {
+          console.warn("Google Sheets send failed", err2);
+          return {
+            ok: false,
+            error: String(err2 && err2.message ? err2.message : err2),
+          };
+        });
     });
 };
 
+/**
+ * Connection test:
+ * 1) GET ?action=ping (best readable check)
+ * 2) POST ping with CORS / no-cors fallback
+ */
 H2.sheetsTest = function () {
-  return H2.sheetsSend({
-    action: "ping",
-    at: new Date().toISOString(),
-  });
+  var url = H2.getSheetsUrl();
+  if (!url) {
+    return Promise.resolve({ ok: false, error: "not_configured" });
+  }
+
+  var pingUrl =
+    url + (url.indexOf("?") >= 0 ? "&" : "?") + "action=ping&t=" + Date.now();
+
+  return fetch(pingUrl, {
+    method: "GET",
+    mode: "cors",
+    redirect: "follow",
+    credentials: "omit",
+  })
+    .then(function (res) {
+      return res.text().then(function (text) {
+        var parsed = H2.parseJsonSafe(text);
+        if (parsed && (parsed.ok || parsed.pong)) {
+          return parsed;
+        }
+        if (res.ok) {
+          return { ok: true, pong: true, raw: text };
+        }
+        return { ok: false, error: "Bad response from Apps Script" };
+      });
+    })
+    .catch(function () {
+      return H2.sheetsSend({
+        action: "ping",
+        at: new Date().toISOString(),
+      }).then(function (res) {
+        if (res && (res.ok || res.pong || res.opaque)) {
+          return {
+            ok: true,
+            pong: true,
+            opaque: !!res.opaque,
+            note: res.note || "",
+          };
+        }
+        return res || { ok: false, error: "Failed to reach Apps Script" };
+      });
+    });
 };
 
 /* ---------- helpers ---------- */

@@ -57,11 +57,11 @@
         <div class="field-row">
           <div class="field">
             <label for="default-company">Default company (for device data)</label>
-            <input id="default-company" type="text" placeholder="e.g. Acme Industries" spellcheck="false" />
+            <input id="default-company" type="text" placeholder="e.g. H2 TECHNOLOGY WORLD" spellcheck="false" />
           </div>
           <div class="field">
             <label for="default-project">Default project (for device data)</label>
-            <input id="default-project" type="text" placeholder="e.g. IoT Sensor Hub" spellcheck="false" />
+            <input id="default-project" type="text" placeholder="e.g. h2server.online" spellcheck="false" />
           </div>
         </div>
         <p class="form-error" id="sheets-error" hidden></p>
@@ -100,11 +100,11 @@
         <div class="field-row">
           <div class="field">
             <label for="new-company">Company name</label>
-            <input id="new-company" type="text" required placeholder="e.g. Acme Industries" spellcheck="false" autocomplete="organization" />
+            <input id="new-company" type="text" required placeholder="e.g. H2 TECHNOLOGY WORLD" spellcheck="false" autocomplete="organization" />
           </div>
           <div class="field">
             <label for="new-project">Project name</label>
-            <input id="new-project" type="text" required placeholder="e.g. IoT Sensor Hub" spellcheck="false" autocomplete="off" />
+            <input id="new-project" type="text" required placeholder="e.g. h2server.online" spellcheck="false" autocomplete="off" />
           </div>
         </div>
         <p class="form-error" id="user-error" hidden></p>
@@ -208,7 +208,7 @@
       function refreshSheetsStatus() {
         if (H2.isSheetsConfigured()) {
           sheetsStatus.textContent =
-            "Sheets: connected · " +
+            "Sheets: ready · " +
             (H2.getDefaultCompany() || "—") +
             " / " +
             (H2.getDefaultProject() || "—");
@@ -251,14 +251,17 @@
         sheetsOk.textContent = "Testing…";
         sheetsOk.hidden = false;
         H2.sheetsTest().then(function (res) {
-          if (res && (res.ok || res.pong)) {
-            sheetsOk.textContent = "Connection OK — Google Sheets is ready.";
+          if (res && (res.ok || res.pong || res.opaque)) {
+            sheetsOk.textContent = res.opaque
+              ? "Request sent to Google. Confirm a new row or open the /exec URL in a tab."
+              : "Connection OK — Google Sheets is ready.";
             sheetsOk.hidden = false;
             sheetsErr.hidden = true;
           } else {
             sheetsOk.hidden = true;
             sheetsErr.textContent =
-              "Test failed. Redeploy Apps Script with access Anyone. " +
+              "Test failed. In Apps Script: Deploy → Manage deployments → access Anyone. " +
+              "Also open the /exec URL in a new tab. " +
               (res && res.error ? res.error : "");
             sheetsErr.hidden = false;
           }
@@ -273,8 +276,8 @@
       }
 
       function buildSampleLinks() {
-        var c = encodeURIComponent(H2.getDefaultCompany() || "DemoCo");
-        var p = encodeURIComponent(H2.getDefaultProject() || "DemoProject");
+        var c = encodeURIComponent(H2.getDefaultCompany() || "H2 TECHNOLOGY WORLD");
+        var p = encodeURIComponent(H2.getDefaultProject() || "h2server.online");
         var samples = [
           originBase + "ingest.html?company=" + c + "&project=" + p + "&data=hello-from-device",
           originBase + "ingest.html?company=" + c + "&project=" + p + "&temp=24.5&hum=60&device=ESP32",

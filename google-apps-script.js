@@ -1,13 +1,21 @@
 /**
  * H2 Server — Google Apps Script backend
- * Bound spreadsheet:
+ *
+ * Spreadsheet:
  * https://docs.google.com/spreadsheets/d/1FDX6ykEnS-gy__3QXHSv3B2Hpy2dKbrmMGsyP_9q5o4/edit
  *
- * Deploy → Web app → Execute as Me → Who has access: Anyone
+ * Deploy → Web app
+ *   Execute as: Me
+ *   Who has access: Anyone
+ *
+ * Web app URL:
+ * https://script.google.com/macros/s/AKfycbxWNF1aGuAfLCHaxjO-ooLP1aOA-RGMa6DjfWcft8lJuUfUTrxB7uPVr6R4502nc5bdyQ/exec
  *
  * Tabs:
  *   Passwords
  *   DATA__Company__Project
+ *
+ * After any code change: Deploy → Manage deployments → Edit → New version → Deploy
  */
 
 var SPREADSHEET_ID = "1FDX6ykEnS-gy__3QXHSv3B2Hpy2dKbrmMGsyP_9q5o4";
@@ -15,21 +23,72 @@ var PASSWORDS_SHEET = "Passwords";
 var DATA_PREFIX = "DATA__";
 
 function doGet(e) {
-  return jsonOut({
-    ok: true,
-    service: "H2 Server Sheets API",
-    sheetId: SPREADSHEET_ID,
-    hint: "POST JSON with action addUser | addData | ping",
-  });
+  try {
+    var p = (e && e.parameter) || {};
+    var action = String(p.action || "ping").toLowerCase();
+
+    if (action === "ping" || action === "") {
+      ensurePasswordsSheet_();
+      return jsonOut({
+        ok: true,
+        pong: true,
+        service: "H2 Server Sheets API",
+        sheetId: SPREADSHEET_ID,
+        at: new Date().toISOString(),
+      });
+    }
+
+    if (action === "adddata") {
+      return jsonOut(
+        addData_({
+          id: p.id || "",
+          company: p.company || "",
+          project: p.project || "",
+          source: p.source || "http-get",
+          data: p.data || p.json || "",
+          at: p.at || new Date().toISOString(),
+        })
+      );
+    }
+
+    return jsonOut({
+      ok: true,
+      service: "H2 Server Sheets API",
+      sheetId: SPREADSHEET_ID,
+      hint: "POST JSON or GET ?action=ping|addData",
+    });
+  } catch (err) {
+    return jsonOut({ ok: false, error: String(err) });
+  }
 }
 
 function doPost(e) {
   try {
-    var raw = (e && e.postData && e.postData.contents) || "{}";
-    var body = JSON.parse(raw);
+    var body = {};
+    var raw = (e && e.postData && e.postData.contents) || "";
+    var type = (e && e.postData && e.postData.type) || "";
+
+    if (raw) {
+      try {
+        body = JSON.parse(raw);
+      } catch (err1) {
+        if (type.indexOf("application/x-www-form-urlencoded") !== -1) {
+          body = parseForm_(raw);
+        } else {
+          body = { action: "addData", data: raw };
+        }
+      }
+    }
+
+    if (e && e.parameter) {
+      if (!body.action && e.parameter.action) body.action = e.parameter.action;
+      if (!body.company && e.parameter.company) body.company = e.parameter.company;
+      if (!body.project && e.parameter.project) body.project = e.parameter.project;
+    }
+
     var action = String(body.action || "").toLowerCase();
 
-    if (action === "ping") {
+    if (action === "ping" || action === "") {
       ensurePasswordsSheet_();
       return jsonOut({
         ok: true,
@@ -51,6 +110,20 @@ function doPost(e) {
   } catch (err) {
     return jsonOut({ ok: false, error: String(err) });
   }
+}
+
+function parseForm_(raw) {
+  var out = {};
+  String(raw)
+    .split("&")
+    .forEach(function (pair) {
+      var i = pair.indexOf("=");
+      if (i === -1) return;
+      var k = decodeURIComponent(pair.substring(0, i).replace(/\+/g, " "));
+      var v = decodeURIComponent(pair.substring(i + 1).replace(/\+/g, " "));
+      out[k] = v;
+    });
+  return out;
 }
 
 function jsonOut(obj) {
