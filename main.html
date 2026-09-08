@@ -30,7 +30,8 @@
   </header>
 
   <main class="dashboard">
-    <section class="panel">
+    <!-- Admin only -->
+    <section class="panel admin-only" id="panel-sheets" hidden>
       <div class="panel-head">
         <h2>Google Sheets</h2>
         <p>
@@ -74,7 +75,8 @@
       </form>
     </section>
 
-    <section class="panel">
+    <!-- Admin only -->
+    <section class="panel admin-only" id="panel-users" hidden>
       <div class="panel-head">
         <h2>Add user</h2>
         <p>Saved in this browser and to the Google Sheet <strong>Passwords</strong> tab.</p>
@@ -131,40 +133,49 @@
       <div class="user-cards" id="users-cards" aria-label="Users"></div>
     </section>
 
-    <section class="panel">
+    <!-- Everyone: received data -->
+    <section class="panel" id="panel-data">
       <div class="panel-head">
-        <h2>HTTP data</h2>
-        <p>Local live list + Google Sheet tab per company/project.</p>
+        <h2 id="data-title">Received data</h2>
+        <p id="data-subtitle">Live list of HTTP / device payloads for your account.</p>
         <p class="live-status" id="live-status">Live · every 5s</p>
       </div>
 
-      <div class="http-help">
-        <p class="label">Complete dummy links — tap or copy</p>
-        <ul class="link-list" id="dummy-links"></ul>
-        <p class="hint">Add <code>company</code> and <code>project</code> on the URL so data goes to the matching sheet tab.</p>
+      <!-- Admin tools for sample links + manual push -->
+      <div class="admin-only" id="data-admin-tools" hidden>
+        <div class="http-help">
+          <p class="label">Complete dummy links — tap or copy</p>
+          <ul class="link-list" id="dummy-links"></ul>
+          <p class="hint">Add <code>company</code> and <code>project</code> on the URL so data goes to the matching sheet tab.</p>
+        </div>
+
+        <form id="manual-data-form" class="stack-form">
+          <div class="field-row">
+            <div class="field">
+              <label for="manual-company">Company</label>
+              <input id="manual-company" type="text" placeholder="Company for this payload" spellcheck="false" />
+            </div>
+            <div class="field">
+              <label for="manual-project">Project</label>
+              <input id="manual-project" type="text" placeholder="Project for this payload" spellcheck="false" />
+            </div>
+          </div>
+          <div class="field">
+            <label for="manual-data">Send test data now (JSON or text)</label>
+            <textarea id="manual-data" rows="3" placeholder='{"temp":24.5,"hum":60}  or  sensor=temp&value=24.5'></textarea>
+          </div>
+          <div class="btn-row">
+            <button type="submit" class="btn-primary">Push data</button>
+            <button type="button" class="btn-ghost" id="clear-data-btn">Clear local log</button>
+            <button type="button" class="btn-ghost" id="refresh-data-btn">Refresh</button>
+          </div>
+        </form>
       </div>
 
-      <form id="manual-data-form" class="stack-form">
-        <div class="field-row">
-          <div class="field">
-            <label for="manual-company">Company</label>
-            <input id="manual-company" type="text" placeholder="Company for this payload" spellcheck="false" />
-          </div>
-          <div class="field">
-            <label for="manual-project">Project</label>
-            <input id="manual-project" type="text" placeholder="Project for this payload" spellcheck="false" />
-          </div>
-        </div>
-        <div class="field">
-          <label for="manual-data">Send test data now (JSON or text)</label>
-          <textarea id="manual-data" rows="3" placeholder='{"temp":24.5,"hum":60}  or  sensor=temp&value=24.5'></textarea>
-        </div>
-        <div class="btn-row">
-          <button type="submit" class="btn-primary">Push data</button>
-          <button type="button" class="btn-ghost" id="clear-data-btn">Clear local log</button>
-          <button type="button" class="btn-ghost" id="refresh-data-btn">Refresh</button>
-        </div>
-      </form>
+      <!-- User: simple refresh only -->
+      <div class="user-only btn-row" id="data-user-tools" hidden>
+        <button type="button" class="btn-ghost" id="refresh-data-btn-user">Refresh</button>
+      </div>
 
       <div id="data-list" class="data-list" aria-live="polite"></div>
     </section>
@@ -183,208 +194,44 @@
       H2.applyBuiltInSheetsConfig();
 
       document.getElementById("year").textContent = new Date().getFullYear();
-      var session = H2.getSession();
-      document.getElementById("who").textContent = session.username;
+
+      var currentUser = H2.getCurrentUser() || {};
+      var isAdmin = H2.isAdmin();
+
+      var whoLabel = currentUser.username || "";
+      if (isAdmin) {
+        whoLabel += " · admin";
+      } else if (currentUser.company || currentUser.project) {
+        whoLabel +=
+          " · " +
+          (currentUser.company || "—") +
+          " / " +
+          (currentUser.project || "—");
+      }
+      document.getElementById("who").textContent = whoLabel;
+
+      /* Show / hide by role */
+      document.querySelectorAll(".admin-only").forEach(function (el) {
+        el.hidden = !isAdmin;
+      });
+      document.querySelectorAll(".user-only").forEach(function (el) {
+        el.hidden = isAdmin;
+      });
+
+      if (!isAdmin) {
+        document.getElementById("data-title").textContent = "Received data";
+        document.getElementById("data-subtitle").textContent =
+          "Payloads for your company / project only. Settings are hidden for user accounts.";
+      } else {
+        document.getElementById("data-title").textContent = "HTTP data";
+        document.getElementById("data-subtitle").textContent =
+          "Local live list + Google Sheet tab per company/project.";
+      }
 
       document.getElementById("logout-btn").addEventListener("click", function () {
         H2.logout();
         window.location.href = "index.html";
       });
-
-      var sheetsUrlEl = document.getElementById("sheets-url");
-      var defCompanyEl = document.getElementById("default-company");
-      var defProjectEl = document.getElementById("default-project");
-      var sheetsStatus = document.getElementById("sheets-status");
-      var sheetsErr = document.getElementById("sheets-error");
-      var sheetsOk = document.getElementById("sheets-ok");
-      var manualCompany = document.getElementById("manual-company");
-      var manualProject = document.getElementById("manual-project");
-      var sheetOpen = document.getElementById("sheet-open-link");
-
-      if (H2.getSheetUrl()) {
-        sheetOpen.href = H2.getSheetUrl();
-      }
-
-      function refreshSheetsStatus() {
-        if (H2.isSheetsConfigured()) {
-          sheetsStatus.textContent =
-            "Sheets: ready · " +
-            (H2.getDefaultCompany() || "—") +
-            " / " +
-            (H2.getDefaultProject() || "—");
-        } else {
-          sheetsStatus.textContent = "Sheets: not configured (local browser only)";
-        }
-      }
-
-      sheetsUrlEl.value = H2.getSheetsUrl();
-      defCompanyEl.value = H2.getDefaultCompany();
-      defProjectEl.value = H2.getDefaultProject();
-      manualCompany.value = H2.getDefaultCompany();
-      manualProject.value = H2.getDefaultProject();
-      refreshSheetsStatus();
-
-      document.getElementById("sheets-form").addEventListener("submit", function (e) {
-        e.preventDefault();
-        sheetsErr.hidden = true;
-        sheetsOk.hidden = true;
-        H2.setSheetsUrl(sheetsUrlEl.value);
-        H2.setDefaultCompany(defCompanyEl.value);
-        H2.setDefaultProject(defProjectEl.value);
-        if (!manualCompany.value) manualCompany.value = defCompanyEl.value;
-        if (!manualProject.value) manualProject.value = defProjectEl.value;
-        refreshSheetsStatus();
-        buildSampleLinks();
-        sheetsOk.textContent = "Settings saved.";
-        sheetsOk.hidden = false;
-      });
-
-      document.getElementById("sheets-test-btn").addEventListener("click", function () {
-        sheetsErr.hidden = true;
-        sheetsOk.hidden = true;
-        H2.setSheetsUrl(sheetsUrlEl.value);
-        if (!H2.isSheetsConfigured()) {
-          sheetsErr.textContent = "Paste your Apps Script Web App URL first.";
-          sheetsErr.hidden = false;
-          return;
-        }
-        sheetsOk.textContent = "Testing…";
-        sheetsOk.hidden = false;
-        H2.sheetsTest().then(function (res) {
-          if (res && (res.ok || res.pong || res.opaque)) {
-            sheetsOk.textContent = res.opaque
-              ? "Request sent to Google. Confirm a new row or open the /exec URL in a tab."
-              : "Connection OK — Google Sheets is ready.";
-            sheetsOk.hidden = false;
-            sheetsErr.hidden = true;
-          } else {
-            sheetsOk.hidden = true;
-            sheetsErr.textContent =
-              "Test failed. In Apps Script: Deploy → Manage deployments → access Anyone. " +
-              "Also open the /exec URL in a new tab. " +
-              (res && res.error ? res.error : "");
-            sheetsErr.hidden = false;
-          }
-          refreshSheetsStatus();
-        });
-      });
-
-      var base = window.location.href.replace(/main\.html.*$/i, "").replace(/#.*$/, "");
-      var originBase = window.location.origin + window.location.pathname.replace(/main\.html$/i, "");
-      if (!window.location.protocol || window.location.protocol === "file:") {
-        originBase = base;
-      }
-
-      function buildSampleLinks() {
-        var c = encodeURIComponent(H2.getDefaultCompany() || "H2 TECHNOLOGY WORLD");
-        var p = encodeURIComponent(H2.getDefaultProject() || "h2server.online");
-        var samples = [
-          originBase + "ingest.html?company=" + c + "&project=" + p + "&data=hello-from-device",
-          originBase + "ingest.html?company=" + c + "&project=" + p + "&temp=24.5&hum=60&device=ESP32",
-          originBase +
-            "ingest.html?company=" +
-            c +
-            "&project=" +
-            p +
-            "&json=" +
-            encodeURIComponent('{"temp":24.5,"hum":60,"device":"ESP32"}'),
-          originBase + "ingest.html?company=" + c + "&project=" + p + "&data=sensor=MQ2&value=412&unit=ppm",
-        ];
-        var list = document.getElementById("dummy-links");
-        list.innerHTML = samples
-          .map(function (url) {
-            return (
-              "<li><a href=\"" +
-              url.replace(/"/g, "&quot;") +
-              "\" target=\"_blank\" rel=\"noopener\">" +
-              H2.escapeHtml(url) +
-              "</a></li>"
-            );
-          })
-          .join("");
-      }
-
-      buildSampleLinks();
-
-      function renderUsers() {
-        var body = document.getElementById("users-body");
-        var cards = document.getElementById("users-cards");
-        var users = H2.getUsers();
-
-        if (!users.length) {
-          body.innerHTML = '<tr><td colspan="6" class="empty">No users yet.</td></tr>';
-          cards.innerHTML = '<p class="empty">No users yet.</p>';
-          return;
-        }
-
-        body.innerHTML = users
-          .map(function (u) {
-            var canDelete = u.username !== H2.ADMIN_USER;
-            var company = u.company || "—";
-            var project = u.project || "—";
-            return (
-              "<tr>" +
-              "<td><code>" +
-              H2.escapeHtml(u.username) +
-              "</code></td>" +
-              "<td>" +
-              H2.escapeHtml(company) +
-              "</td>" +
-              "<td>" +
-              H2.escapeHtml(project) +
-              "</td>" +
-              "<td>" +
-              H2.escapeHtml(u.role || "user") +
-              "</td>" +
-              "<td>" +
-              H2.escapeHtml(H2.formatTime(u.createdAt)) +
-              "</td>" +
-              "<td>" +
-              (canDelete
-                ? '<button type="button" class="btn-tiny" data-del="' +
-                  H2.escapeHtml(u.id) +
-                  '">Remove</button>'
-                : '<span class="muted">locked</span>') +
-              "</td>" +
-              "</tr>"
-            );
-          })
-          .join("");
-
-        cards.innerHTML = users
-          .map(function (u) {
-            var canDelete = u.username !== H2.ADMIN_USER;
-            var company = u.company || "—";
-            var project = u.project || "—";
-            return (
-              '<article class="user-card">' +
-              '<div class="user-card-top">' +
-              "<code>" +
-              H2.escapeHtml(u.username) +
-              "</code>" +
-              (canDelete
-                ? '<button type="button" class="btn-tiny" data-del="' +
-                  H2.escapeHtml(u.id) +
-                  '">Remove</button>'
-                : '<span class="muted">locked</span>') +
-              "</div>" +
-              '<div class="user-card-meta">Company: ' +
-              H2.escapeHtml(company) +
-              "</div>" +
-              '<div class="user-card-meta">Project: ' +
-              H2.escapeHtml(project) +
-              "</div>" +
-              '<div class="user-card-meta">Role: ' +
-              H2.escapeHtml(u.role || "user") +
-              "</div>" +
-              '<div class="user-card-meta">' +
-              H2.escapeHtml(H2.formatTime(u.createdAt)) +
-              "</div>" +
-              "</article>"
-            );
-          })
-          .join("");
-      }
 
       var lastDataStamp = "";
       var liveEl = document.getElementById("live-status");
@@ -410,10 +257,11 @@
         lastDataStamp = stamp;
 
         var box = document.getElementById("data-list");
-        var items = H2.getDataLog();
+        var items = H2.getVisibleDataLog();
         if (!items.length) {
-          box.innerHTML =
-            '<p class="empty">No HTTP data yet. Open a dummy link above or push test data.</p>';
+          box.innerHTML = isAdmin
+            ? '<p class="empty">No HTTP data yet. Open a dummy link above or push test data.</p>'
+            : '<p class="empty">No received data for your company / project yet.</p>';
           if (liveEl) liveEl.textContent = "Live · every 5s";
           return;
         }
@@ -449,73 +297,280 @@
         if (liveEl) liveEl.textContent = "Updated · live every 5s";
       }
 
-      document.getElementById("add-user-form").addEventListener("submit", function (e) {
-        e.preventDefault();
-        var err = document.getElementById("user-error");
-        var ok = document.getElementById("user-ok");
-        err.hidden = true;
-        ok.hidden = true;
-        var result = H2.addUser(
-          document.getElementById("new-username").value,
-          document.getElementById("new-password").value,
-          {
-            role: document.getElementById("new-role").value,
-            company: document.getElementById("new-company").value,
-            project: document.getElementById("new-project").value,
-          }
-        );
-        if (!result.ok) {
-          err.textContent = result.error;
-          err.hidden = false;
-          return;
+      /* -------- Admin-only wiring -------- */
+      if (isAdmin) {
+        var sheetsUrlEl = document.getElementById("sheets-url");
+        var defCompanyEl = document.getElementById("default-company");
+        var defProjectEl = document.getElementById("default-project");
+        var sheetsStatus = document.getElementById("sheets-status");
+        var sheetsErr = document.getElementById("sheets-error");
+        var sheetsOk = document.getElementById("sheets-ok");
+        var manualCompany = document.getElementById("manual-company");
+        var manualProject = document.getElementById("manual-project");
+        var sheetOpen = document.getElementById("sheet-open-link");
+
+        if (H2.getSheetUrl()) {
+          sheetOpen.href = H2.getSheetUrl();
         }
-        ok.textContent = H2.isSheetsConfigured()
-          ? "User added locally and sent to Google Sheet (Passwords)."
-          : "User added locally.";
-        ok.hidden = false;
-        e.target.reset();
-        renderUsers();
-      });
 
-      function onDeleteClick(e) {
-        var btn = e.target.closest("[data-del]");
-        if (!btn) return;
-        H2.deleteUser(btn.getAttribute("data-del"));
-        renderUsers();
-      }
-
-      document.getElementById("users-body").addEventListener("click", onDeleteClick);
-      document.getElementById("users-cards").addEventListener("click", onDeleteClick);
-
-      document.getElementById("manual-data-form").addEventListener("submit", function (e) {
-        e.preventDefault();
-        var text = document.getElementById("manual-data").value.trim();
-        if (!text) return;
-        var payload = text;
-        if (text.charAt(0) === "{" || text.charAt(0) === "[") {
-          try {
-            payload = JSON.parse(text);
-          } catch (err) {
-            payload = text;
+        function refreshSheetsStatus() {
+          if (H2.isSheetsConfigured()) {
+            sheetsStatus.textContent =
+              "Sheets: ready · " +
+              (H2.getDefaultCompany() || "—") +
+              " / " +
+              (H2.getDefaultProject() || "—");
+          } else {
+            sheetsStatus.textContent = "Sheets: not configured (local browser only)";
           }
         }
-        H2.pushData(payload, {
-          source: "manual",
-          company: manualCompany.value || H2.getDefaultCompany(),
-          project: manualProject.value || H2.getDefaultProject(),
+
+        sheetsUrlEl.value = H2.getSheetsUrl();
+        defCompanyEl.value = H2.getDefaultCompany();
+        defProjectEl.value = H2.getDefaultProject();
+        manualCompany.value = H2.getDefaultCompany();
+        manualProject.value = H2.getDefaultProject();
+        refreshSheetsStatus();
+
+        document.getElementById("sheets-form").addEventListener("submit", function (e) {
+          e.preventDefault();
+          sheetsErr.hidden = true;
+          sheetsOk.hidden = true;
+          H2.setSheetsUrl(sheetsUrlEl.value);
+          H2.setDefaultCompany(defCompanyEl.value);
+          H2.setDefaultProject(defProjectEl.value);
+          if (!manualCompany.value) manualCompany.value = defCompanyEl.value;
+          if (!manualProject.value) manualProject.value = defProjectEl.value;
+          refreshSheetsStatus();
+          buildSampleLinks();
+          sheetsOk.textContent = "Settings saved.";
+          sheetsOk.hidden = false;
         });
-        document.getElementById("manual-data").value = "";
-        renderData(true);
-      });
 
-      document.getElementById("clear-data-btn").addEventListener("click", function () {
-        H2.clearData();
-        renderData(true);
-      });
+        document.getElementById("sheets-test-btn").addEventListener("click", function () {
+          sheetsErr.hidden = true;
+          sheetsOk.hidden = true;
+          H2.setSheetsUrl(sheetsUrlEl.value);
+          if (!H2.isSheetsConfigured()) {
+            sheetsErr.textContent = "Paste your Apps Script Web App URL first.";
+            sheetsErr.hidden = false;
+            return;
+          }
+          sheetsOk.textContent = "Testing…";
+          sheetsOk.hidden = false;
+          H2.sheetsTest().then(function (res) {
+            if (res && (res.ok || res.pong || res.opaque)) {
+              sheetsOk.textContent = res.opaque
+                ? "Request sent to Google. Confirm a new row or open the /exec URL in a tab."
+                : "Connection OK — Google Sheets is ready.";
+              sheetsOk.hidden = false;
+              sheetsErr.hidden = true;
+            } else {
+              sheetsOk.hidden = true;
+              sheetsErr.textContent =
+                "Test failed. In Apps Script: Deploy → Manage deployments → access Anyone. " +
+                "Also open the /exec URL in a new tab. " +
+                (res && res.error ? res.error : "");
+              sheetsErr.hidden = false;
+            }
+            refreshSheetsStatus();
+          });
+        });
 
-      document.getElementById("refresh-data-btn").addEventListener("click", function () {
-        renderData(true);
-      });
+        var base = window.location.href.replace(/main\.html.*$/i, "").replace(/#.*$/, "");
+        var originBase = window.location.origin + window.location.pathname.replace(/main\.html$/i, "");
+        if (!window.location.protocol || window.location.protocol === "file:") {
+          originBase = base;
+        }
+
+        function buildSampleLinks() {
+          var c = encodeURIComponent(H2.getDefaultCompany() || "H2 TECHNOLOGY WORLD");
+          var p = encodeURIComponent(H2.getDefaultProject() || "h2server.online");
+          var samples = [
+            originBase + "ingest.html?company=" + c + "&project=" + p + "&data=hello-from-device",
+            originBase + "ingest.html?company=" + c + "&project=" + p + "&temp=24.5&hum=60&device=ESP32",
+            originBase +
+              "ingest.html?company=" +
+              c +
+              "&project=" +
+              p +
+              "&json=" +
+              encodeURIComponent('{"temp":24.5,"hum":60,"device":"ESP32"}'),
+            originBase + "ingest.html?company=" + c + "&project=" + p + "&data=sensor=MQ2&value=412&unit=ppm",
+          ];
+          var list = document.getElementById("dummy-links");
+          list.innerHTML = samples
+            .map(function (url) {
+              return (
+                "<li><a href=\"" +
+                url.replace(/"/g, "&quot;") +
+                "\" target=\"_blank\" rel=\"noopener\">" +
+                H2.escapeHtml(url) +
+                "</a></li>"
+              );
+            })
+            .join("");
+        }
+
+        buildSampleLinks();
+
+        function renderUsers() {
+          var body = document.getElementById("users-body");
+          var cards = document.getElementById("users-cards");
+          var users = H2.getUsers();
+
+          if (!users.length) {
+            body.innerHTML = '<tr><td colspan="6" class="empty">No users yet.</td></tr>';
+            cards.innerHTML = '<p class="empty">No users yet.</p>';
+            return;
+          }
+
+          body.innerHTML = users
+            .map(function (u) {
+              var canDelete = u.username !== H2.ADMIN_USER;
+              var company = u.company || "—";
+              var project = u.project || "—";
+              return (
+                "<tr>" +
+                "<td><code>" +
+                H2.escapeHtml(u.username) +
+                "</code></td>" +
+                "<td>" +
+                H2.escapeHtml(company) +
+                "</td>" +
+                "<td>" +
+                H2.escapeHtml(project) +
+                "</td>" +
+                "<td>" +
+                H2.escapeHtml(u.role || "user") +
+                "</td>" +
+                "<td>" +
+                H2.escapeHtml(H2.formatTime(u.createdAt)) +
+                "</td>" +
+                "<td>" +
+                (canDelete
+                  ? '<button type="button" class="btn-tiny" data-del="' +
+                    H2.escapeHtml(u.id) +
+                    '">Remove</button>'
+                  : '<span class="muted">locked</span>') +
+                "</td>" +
+                "</tr>"
+              );
+            })
+            .join("");
+
+          cards.innerHTML = users
+            .map(function (u) {
+              var canDelete = u.username !== H2.ADMIN_USER;
+              var company = u.company || "—";
+              var project = u.project || "—";
+              return (
+                '<article class="user-card">' +
+                '<div class="user-card-top">' +
+                "<code>" +
+                H2.escapeHtml(u.username) +
+                "</code>" +
+                (canDelete
+                  ? '<button type="button" class="btn-tiny" data-del="' +
+                    H2.escapeHtml(u.id) +
+                    '">Remove</button>'
+                  : '<span class="muted">locked</span>') +
+                "</div>" +
+                '<div class="user-card-meta">Company: ' +
+                H2.escapeHtml(company) +
+                "</div>" +
+                '<div class="user-card-meta">Project: ' +
+                H2.escapeHtml(project) +
+                "</div>" +
+                '<div class="user-card-meta">Role: ' +
+                H2.escapeHtml(u.role || "user") +
+                "</div>" +
+                '<div class="user-card-meta">' +
+                H2.escapeHtml(H2.formatTime(u.createdAt)) +
+                "</div>" +
+                "</article>"
+              );
+            })
+            .join("");
+        }
+
+        document.getElementById("add-user-form").addEventListener("submit", function (e) {
+          e.preventDefault();
+          var err = document.getElementById("user-error");
+          var ok = document.getElementById("user-ok");
+          err.hidden = true;
+          ok.hidden = true;
+          var result = H2.addUser(
+            document.getElementById("new-username").value,
+            document.getElementById("new-password").value,
+            {
+              role: document.getElementById("new-role").value,
+              company: document.getElementById("new-company").value,
+              project: document.getElementById("new-project").value,
+            }
+          );
+          if (!result.ok) {
+            err.textContent = result.error;
+            err.hidden = false;
+            return;
+          }
+          ok.textContent = H2.isSheetsConfigured()
+            ? "User added locally and sent to Google Sheet (Passwords)."
+            : "User added locally.";
+          ok.hidden = false;
+          e.target.reset();
+          renderUsers();
+        });
+
+        function onDeleteClick(e) {
+          var btn = e.target.closest("[data-del]");
+          if (!btn) return;
+          H2.deleteUser(btn.getAttribute("data-del"));
+          renderUsers();
+        }
+
+        document.getElementById("users-body").addEventListener("click", onDeleteClick);
+        document.getElementById("users-cards").addEventListener("click", onDeleteClick);
+
+        document.getElementById("manual-data-form").addEventListener("submit", function (e) {
+          e.preventDefault();
+          var text = document.getElementById("manual-data").value.trim();
+          if (!text) return;
+          var payload = text;
+          if (text.charAt(0) === "{" || text.charAt(0) === "[") {
+            try {
+              payload = JSON.parse(text);
+            } catch (err) {
+              payload = text;
+            }
+          }
+          H2.pushData(payload, {
+            source: "manual",
+            company: manualCompany.value || H2.getDefaultCompany(),
+            project: manualProject.value || H2.getDefaultProject(),
+          });
+          document.getElementById("manual-data").value = "";
+          renderData(true);
+        });
+
+        document.getElementById("clear-data-btn").addEventListener("click", function () {
+          H2.clearData();
+          renderData(true);
+        });
+
+        document.getElementById("refresh-data-btn").addEventListener("click", function () {
+          renderData(true);
+        });
+
+        renderUsers();
+      } else {
+        var userRefresh = document.getElementById("refresh-data-btn-user");
+        if (userRefresh) {
+          userRefresh.addEventListener("click", function () {
+            renderData(true);
+          });
+        }
+      }
 
       window.addEventListener("storage", function (e) {
         if (e.key === H2.DATA_KEY || e.key === "h2_data_ping") {
@@ -531,12 +586,10 @@
         if (document.visibilityState === "visible") renderData(true);
       });
 
+      renderData(true);
       setInterval(function () {
         renderData(false);
       }, 5000);
-
-      renderUsers();
-      renderData(true);
     }
   </script>
 </body>

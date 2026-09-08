@@ -62,8 +62,12 @@ H2.validateLogin = function (username, password) {
 };
 
 H2.setSession = function (username) {
+  const user = H2.findUser(username) || {};
   const session = {
     username: username,
+    role: user.role || "user",
+    company: user.company || "",
+    project: user.project || "",
     at: Date.now(),
   };
   sessionStorage.setItem(H2.SESSION_KEY, JSON.stringify(session));
@@ -93,10 +97,26 @@ H2.requireAuth = function () {
   return true;
 };
 
-/**
- * Add a user with company + project.
- * opts: { role, company, project }
- */
+H2.getCurrentUser = function () {
+  var session = H2.getSession();
+  if (!session || !session.username) return null;
+  var user = H2.findUser(session.username);
+  if (user) return user;
+  return {
+    username: session.username,
+    role: session.role || "user",
+    company: session.company || "",
+    project: session.project || "",
+  };
+};
+
+H2.isAdmin = function () {
+  var user = H2.getCurrentUser();
+  if (!user) return false;
+  if (user.username === H2.ADMIN_USER) return true;
+  return String(user.role || "").toLowerCase() === "admin";
+};
+
 H2.addUser = function (username, password, roleOrOpts, maybeCompany, maybeProject) {
   const name = String(username || "").trim();
   const pass = String(password || "");
@@ -180,14 +200,30 @@ H2.getDataLog = function () {
   }
 };
 
+H2.getVisibleDataLog = function () {
+  var items = H2.getDataLog();
+  if (H2.isAdmin()) return items;
+
+  var user = H2.getCurrentUser() || {};
+  var company = String(user.company || "").trim().toLowerCase();
+  var project = String(user.project || "").trim().toLowerCase();
+
+  return items.filter(function (item) {
+    var ic = String(item.company || "").trim().toLowerCase();
+    var ip = String(item.project || "").trim().toLowerCase();
+    if (company && project) {
+      return ic === company && ip === project;
+    }
+    if (company) return ic === company;
+    if (project) return ip === project;
+    return false;
+  });
+};
+
 H2.saveDataLog = function (items) {
   localStorage.setItem(H2.DATA_KEY, JSON.stringify(items.slice(0, H2.MAX_DATA)));
 };
 
-/**
- * Save payload locally + Google Sheet (by company/project).
- * meta: { company, project, source }
- */
 H2.pushData = function (payload, sourceOrMeta) {
   var source = "manual";
   var company = H2.getDefaultCompany();
@@ -242,12 +278,13 @@ H2.clearData = function () {
 /* ---------- Google Sheets config ---------- */
 
 H2.getSheetsUrl = function () {
+  var cfg = H2.getBuiltInConfig();
+  var builtIn = String(cfg.APPS_SCRIPT_URL || "").trim();
   try {
     var saved = String(localStorage.getItem(H2.SHEETS_URL_KEY) || "").trim();
     if (saved) return saved;
   } catch (e) {}
-  var cfg = H2.getBuiltInConfig();
-  return String(cfg.APPS_SCRIPT_URL || "").trim();
+  return builtIn;
 };
 
 H2.setSheetsUrl = function (url) {
@@ -289,42 +326,157 @@ H2.isSheetsConfigured = function () {
   return /^https:\/\//i.test(H2.getSheetsUrl());
 };
 
-/**
- * Always refresh built-in Web App URL + defaults into localStorage.
- */
 H2.applyBuiltInSheetsConfig = function () {
   var cfg = H2.getBuiltInConfig();
   try {
     if (cfg.APPS_SCRIPT_URL) {
       localStorage.setItem(H2.SHEETS_URL_KEY, String(cfg.APPS_SCRIPT_URL).trim());
     }
-    if (cfg.DEFAULT_COMPANY) {
-      localStorage.setItem(
-        H2.SHEETS_DEFAULT_COMPANY_KEY,
-        String(cfg.DEFAULT_COMPANY).trim()
-      );
+    if (cfg.DEFAULT_COMPANY && !localStorage.getItem(H2.SHEETS_DEFAULT_COMPANY_KEY)) {
+      localStorage.setItem(H2.SHEETS_DEFAULT_COMPANY_KEY, cfg.DEFAULT_COMPANY);
     }
-    if (cfg.DEFAULT_PROJECT) {
-      localStorage.setItem(
-        H2.SHEETS_DEFAULT_PROJECT_KEY,
-        String(cfg.DEFAULT_PROJECT).trim()
-      );
+    if (cfg.DEFAULT_PROJECT && !localStorage.getItem(H2.SHEETS_DEFAULT_PROJECT_KEY)) {
+      localStorage.setItem(H2.SHEETS_DEFAULT_PROJECT_KEY, cfg.DEFAULT_PROJECT);
     }
   } catch (e) {}
 };
 
-H2.parseJsonSafe = function (text) {
-  try {
-    return JSON.parse(text);
-  } catch (e) {
-    return null;
+/**
+ * JSONP GET — works cross-origin (no CORS / no Failed to fetch from fetch()).
+ */
+H2.sheetsJsonp = function (params) {
+  var base = H2.getSheetsUrl();
+  if (!base) {
+    return Promise.resolve({ ok: false, error: "not_configured" });
   }
+
+  return new Promise(function (resolve) {
+    var cbName = "h2SheetsCb_" + Date.now() + "_" + Math.floor(Math.random() * 1e6);
+    var settled = false;
+    var script = document.createElement("script");
+
+    function finish(result) {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      try {
+        delete window[cbName];
+      } catch (e) {
+        window[cbName] = undefined;
+      }
+      if (script.parentNode) script.parentNode.removeChild(script);
+      resolve(result);
+    }
+
+    window[cbName] = function (data) {
+      finish(data && typeof data === "object" ? data : { ok: true, raw: data });
+    };
+
+    var q = [];
+    var src = params || {};
+    Object.keys(src).forEach(function (k) {
+      if (src[k] == null || src[k] === "") return;
+      q.push(encodeURIComponent(k) + "=" + encodeURIComponent(String(src[k])));
+    });
+    q.push("callback=" + encodeURIComponent(cbName));
+    q.push("_=" + Date.now());
+
+    script.src = base + (base.indexOf("?") >= 0 ? "&" : "?") + q.join("&");
+    script.async = true;
+    script.onerror = function () {
+      finish({
+        ok: false,
+        error:
+          "JSONP blocked or Apps Script not redeployed. Deploy web app as Anyone, New version.",
+      });
+    };
+
+    var timer = setTimeout(function () {
+      finish({
+        ok: false,
+        error: "Timeout — redeploy Apps Script (Anyone) and try again.",
+      });
+    }, 20000);
+
+    (document.head || document.body || document.documentElement).appendChild(script);
+  });
 };
 
 /**
- * Send JSON to Google Apps Script web app.
- * 1) CORS POST (readable response)
- * 2) no-cors POST fallback (data still arrives; response opaque)
+ * Hidden form POST — reliable write path (no CORS read needed).
+ */
+H2.sheetsFormPost = function (body) {
+  var url = H2.getSheetsUrl();
+  if (!url) {
+    return Promise.resolve({ ok: false, skipped: true, reason: "not_configured" });
+  }
+
+  return new Promise(function (resolve) {
+    var name = "h2_fr_" + Date.now() + "_" + Math.floor(Math.random() * 1e6);
+    var iframe = document.createElement("iframe");
+    iframe.name = name;
+    iframe.setAttribute("name", name);
+    iframe.style.cssText = "display:none;width:0;height:0;border:0;position:absolute";
+    iframe.setAttribute("aria-hidden", "true");
+
+    var form = document.createElement("form");
+    form.method = "POST";
+    form.action = url;
+    form.target = name;
+    form.acceptCharset = "UTF-8";
+    form.style.display = "none";
+
+    var input = document.createElement("input");
+    input.type = "hidden";
+    input.name = "payload";
+    input.value = JSON.stringify(body || {});
+    form.appendChild(input);
+
+    var actionField = document.createElement("input");
+    actionField.type = "hidden";
+    actionField.name = "action";
+    actionField.value = (body && body.action) || "";
+    form.appendChild(actionField);
+
+    var settled = false;
+    function finish(result) {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      setTimeout(function () {
+        try {
+          if (form.parentNode) form.parentNode.removeChild(form);
+        } catch (e1) {}
+        try {
+          if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+        } catch (e2) {}
+      }, 2000);
+      resolve(result);
+    }
+
+    iframe.onload = function () {
+      finish({ ok: true, via: "form" });
+    };
+
+    document.body.appendChild(iframe);
+    document.body.appendChild(form);
+
+    try {
+      form.submit();
+    } catch (err) {
+      finish({ ok: false, error: String(err && err.message ? err.message : err) });
+      return;
+    }
+
+    var timer = setTimeout(function () {
+      finish({ ok: true, via: "form", note: "submitted" });
+    }, 6000);
+  });
+};
+
+/**
+ * Send to Sheets: JSONP for small/simple actions, form POST otherwise.
+ * Avoids fetch() CORS "Failed to fetch" with Apps Script redirects.
  */
 H2.sheetsSend = function (body) {
   var url = H2.getSheetsUrl();
@@ -332,93 +484,76 @@ H2.sheetsSend = function (body) {
     return Promise.resolve({ ok: false, skipped: true, reason: "not_configured" });
   }
 
-  var payload = JSON.stringify(body || {});
+  var data = body || {};
+  var action = String(data.action || "").toLowerCase();
 
-  return fetch(url, {
-    method: "POST",
-    mode: "cors",
-    redirect: "follow",
-    headers: { "Content-Type": "text/plain;charset=utf-8" },
-    body: payload,
-  })
-    .then(function (res) {
-      return res.text().then(function (text) {
-        var parsed = H2.parseJsonSafe(text);
-        if (parsed) return parsed;
-        return { ok: res.ok, raw: text };
-      });
-    })
-    .catch(function () {
-      return fetch(url, {
-        method: "POST",
-        mode: "no-cors",
-        body: payload,
-      })
-        .then(function () {
-          return {
-            ok: true,
-            opaque: true,
-            note: "sent_via_no_cors",
-          };
-        })
-        .catch(function (err2) {
-          console.warn("Google Sheets send failed", err2);
-          return {
-            ok: false,
-            error: String(err2 && err2.message ? err2.message : err2),
-          };
-        });
-    });
-};
-
-/**
- * Connection test:
- * 1) GET ?action=ping (best readable check)
- * 2) POST ping with CORS / no-cors fallback
- */
-H2.sheetsTest = function () {
-  var url = H2.getSheetsUrl();
-  if (!url) {
-    return Promise.resolve({ ok: false, error: "not_configured" });
+  if (action === "ping") {
+    return H2.sheetsJsonp({ action: "ping" });
   }
 
-  var pingUrl =
-    url + (url.indexOf("?") >= 0 ? "&" : "?") + "action=ping&t=" + Date.now();
-
-  return fetch(pingUrl, {
-    method: "GET",
-    mode: "cors",
-    redirect: "follow",
-    credentials: "omit",
-  })
-    .then(function (res) {
-      return res.text().then(function (text) {
-        var parsed = H2.parseJsonSafe(text);
-        if (parsed && (parsed.ok || parsed.pong)) {
-          return parsed;
-        }
-        if (res.ok) {
-          return { ok: true, pong: true, raw: text };
-        }
-        return { ok: false, error: "Bad response from Apps Script" };
-      });
-    })
-    .catch(function () {
-      return H2.sheetsSend({
-        action: "ping",
-        at: new Date().toISOString(),
+  if (action === "adddata") {
+    var dataStr =
+      data.data == null
+        ? ""
+        : typeof data.data === "string"
+          ? data.data
+          : JSON.stringify(data.data);
+    if (dataStr.length < 1200) {
+      return H2.sheetsJsonp({
+        action: "addData",
+        id: data.id || "",
+        company: data.company || "",
+        project: data.project || "",
+        source: data.source || "http",
+        data: dataStr,
+        at: data.at || new Date().toISOString(),
       }).then(function (res) {
-        if (res && (res.ok || res.pong || res.opaque)) {
-          return {
-            ok: true,
-            pong: true,
-            opaque: !!res.opaque,
-            note: res.note || "",
-          };
-        }
-        return res || { ok: false, error: "Failed to reach Apps Script" };
+        if (res && res.ok) return res;
+        return H2.sheetsFormPost(data);
       });
+    }
+  }
+
+  if (action === "adduser") {
+    return H2.sheetsJsonp({
+      action: "addUser",
+      id: data.id || "",
+      username: data.username || "",
+      password: data.password || "",
+      role: data.role || "user",
+      company: data.company || "",
+      project: data.project || "",
+      createdAt: data.createdAt || new Date().toISOString(),
+    }).then(function (res) {
+      if (res && res.ok) return res;
+      return H2.sheetsFormPost(data);
     });
+  }
+
+  return H2.sheetsFormPost(data);
+};
+
+/** Connection test via JSONP (real ok/pong from Apps Script). */
+H2.sheetsTest = function () {
+  return H2.sheetsJsonp({ action: "ping" }).then(function (res) {
+    if (res && (res.ok || res.pong)) return res;
+    return H2.sheetsFormPost({
+      action: "ping",
+      at: new Date().toISOString(),
+    }).then(function (formRes) {
+      if (formRes && formRes.ok) {
+        return {
+          ok: true,
+          pong: true,
+          via: "form",
+          note: "Form submit reached Google. Confirm Apps Script has JSONP deploy for full test.",
+        };
+      }
+      return res && res.error
+        ? res
+        : { ok: false, error: (formRes && formRes.error) || "Connection failed" };
+    });
+  });
 };
 
 /* ---------- helpers ---------- */
