@@ -1,0 +1,9 @@
+# Static site — do not use a Jekyll theme (avoids assets/ conflict on GitHub Pages)
+theme: null
+plugins: []
+exclude:
+  - node_modules
+  - package.json
+  - package-lock.json
+  - .gitignore
+  - google-apps-script.js
