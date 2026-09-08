@@ -6,6 +6,24 @@ Login + main dashboard for **H2 TECHNOLOGY WORLD** (static site, free on GitHub 
 
 ---
 
+## Public site (use this on phone)
+
+Custom domain DNS is currently broken (`NXDOMAIN` / “server IP not found”).  
+**Use the GitHub Pages URL until DNS is fixed:**
+
+| Page | Working URL |
+|------|-------------|
+| **Login (phone / public)** | https://hptech1331.github.io/h2server/ |
+| **Main** | https://hptech1331.github.io/h2server/main.html |
+| **Ingest** | https://hptech1331.github.io/h2server/ingest.html |
+| Custom domain (down) | https://h2server.online/ |
+| Local login | http://localhost:3000/ |
+| Local main | http://localhost:3000/main.html |
+
+Open the **github.io** link on mobile — not `h2server.online` until DNS works again.
+
+---
+
 ## Login
 
 | Field | Value |
@@ -14,13 +32,6 @@ Login + main dashboard for **H2 TECHNOLOGY WORLD** (static site, free on GitHub 
 | Password | `h2tech@123` |
 
 After sign-in you go to **main.html**.
-
-| Page | URL |
-|------|-----|
-| Live login | https://h2server.online/ |
-| Live main | https://h2server.online/main.html |
-| Local login | http://localhost:3000/ |
-| Local main | http://localhost:3000/main.html |
 
 ---
 
@@ -85,18 +96,16 @@ Use **`ingest.html`** with query parameters.
 
 ### Method 1 — `json=` parameter (recommended)
 
-Put a full JSON object in the `json` query param.
+**GitHub Pages (works while custom domain is down):**
 
-**Browser / device (GET):**
+```text
+https://hptech1331.github.io/h2server/ingest.html?company=H2%20TECHNOLOGY%20WORLD&project=h2server.online&json={"temp":24.5,"hum":60,"device":"ESP32"}
+```
+
+**Custom domain (only after DNS is fixed):**
 
 ```text
 https://h2server.online/ingest.html?company=H2%20TECHNOLOGY%20WORLD&project=h2server.online&json={"temp":24.5,"hum":60,"device":"ESP32"}
-```
-
-**URL-encoded (safer for devices / curl):**
-
-```text
-https://h2server.online/ingest.html?company=H2%20TECHNOLOGY%20WORLD&project=h2server.online&json=%7B%22temp%22%3A24.5%2C%22hum%22%3A60%2C%22device%22%3A%22ESP32%22%7D
 ```
 
 **Local preview:**
@@ -105,31 +114,16 @@ https://h2server.online/ingest.html?company=H2%20TECHNOLOGY%20WORLD&project=h2se
 http://localhost:3000/ingest.html?company=H2%20TECHNOLOGY%20WORLD&project=h2server.online&json={"temp":24.5,"hum":60,"device":"ESP32"}
 ```
 
-**curl example:**
-
-```bash
-curl -G "https://h2server.online/ingest.html" \
-  --data-urlencode "company=H2 TECHNOLOGY WORLD" \
-  --data-urlencode "project=h2server.online" \
-  --data-urlencode "json={\"temp\":24.5,\"hum\":60,\"device\":\"ESP32\"}"
-```
-
-**ESP32 / Arduino-style URL (encode JSON first):**
+### Method 2 — plain fields
 
 ```text
-http://h2server.online/ingest.html?company=Acme&project=IoT&json={"temp":24.5,"hum":60}
-```
-
-### Method 2 — plain fields (auto-packed as JSON-ish data)
-
-```text
-https://h2server.online/ingest.html?company=Acme&project=IoT&temp=24.5&hum=60&device=ESP32
+https://hptech1331.github.io/h2server/ingest.html?company=Acme&project=IoT&temp=24.5&hum=60&device=ESP32
 ```
 
 ### Method 3 — simple `data=` text
 
 ```text
-https://h2server.online/ingest.html?company=Acme&project=IoT&data=hello-from-device
+https://hptech1331.github.io/h2server/ingest.html?company=Acme&project=IoT&data=hello-from-device
 ```
 
 ### Method 4 — open main page and push manually
@@ -138,34 +132,28 @@ https://h2server.online/ingest.html?company=Acme&project=IoT&data=hello-from-dev
 2. Set company + project
 3. Paste JSON in **Send test data** → **Push data**
 
-Example body:
-
-```json
-{"temp":24.5,"hum":60,"device":"ESP32"}
-```
-
 ---
 
 ## Ready-made links (copy / open)
 
-### Live site — JSON
+### GitHub Pages — JSON (use these on phone / devices)
 
 ```text
-https://h2server.online/ingest.html?company=H2%20TECHNOLOGY%20WORLD&project=h2server.online&json={"temp":24.5,"hum":60,"device":"ESP32"}
+https://hptech1331.github.io/h2server/ingest.html?company=H2%20TECHNOLOGY%20WORLD&project=h2server.online&json={"temp":24.5,"hum":60,"device":"ESP32"}
 ```
 
 ```text
-https://h2server.online/ingest.html?company=H2%20TECHNOLOGY%20WORLD&project=h2server.online&json={"sensor":"MQ2","value":412,"unit":"ppm"}
+https://hptech1331.github.io/h2server/ingest.html?company=H2%20TECHNOLOGY%20WORLD&project=h2server.online&json={"sensor":"MQ2","value":412,"unit":"ppm"}
 ```
 
-### Live site — fields / text
+### GitHub Pages — fields / text
 
 ```text
-https://h2server.online/ingest.html?company=H2%20TECHNOLOGY%20WORLD&project=h2server.online&temp=24.5&hum=60&device=ESP32
+https://hptech1331.github.io/h2server/ingest.html?company=H2%20TECHNOLOGY%20WORLD&project=h2server.online&temp=24.5&hum=60&device=ESP32
 ```
 
 ```text
-https://h2server.online/ingest.html?company=H2%20TECHNOLOGY%20WORLD&project=h2server.online&data=hello-from-device
+https://hptech1331.github.io/h2server/ingest.html?company=H2%20TECHNOLOGY%20WORLD&project=h2server.online&data=hello-from-device
 ```
 
 ### Local (`npm start` → port 3000) — JSON
@@ -176,16 +164,6 @@ http://localhost:3000/ingest.html?company=H2%20TECHNOLOGY%20WORLD&project=h2serv
 
 ```text
 http://localhost:3000/ingest.html?company=DemoCo&project=DemoProject&json={"temp":24.5,"hum":60}
-```
-
-### Local — fields / text
-
-```text
-http://localhost:3000/ingest.html?company=DemoCo&project=DemoProject&temp=24.5&hum=60&device=ESP32
-```
-
-```text
-http://localhost:3000/ingest.html?company=DemoCo&project=DemoProject&data=hello-from-device
 ```
 
 ---
@@ -238,10 +216,11 @@ Open http://localhost:3000
 
 ---
 
-## Deploy
+## Deploy / DNS
 
 Repo: **HPTech1331/h2server** → Settings → Pages → branch `main` / root.
 
-- Custom domain: **[DEPLOY.md](DEPLOY.md)**
+- **Working public URL:** https://hptech1331.github.io/h2server/
+- **Custom domain fix:** **[DEPLOY.md](DEPLOY.md)** — `h2server.online` needs valid A/CNAME records (error `DNS_PROBE_FINISHED_NXDOMAIN` = domain not found)
 - Google Sheets detail: **[GOOGLE_SHEETS.md](GOOGLE_SHEETS.md)**
 - More sample links: **[LINKS.md](LINKS.md)**
