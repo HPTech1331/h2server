@@ -2,6 +2,8 @@
 
 Login + main dashboard for **Electronics World** (static site, free on GitHub Pages).
 
+**GitHub:** [https://github.com/HPTech1331/h2server](https://github.com/HPTech1331/h2server)
+
 ## Login
 
 | Field | Value |
@@ -46,4 +48,11 @@ Then open http://localhost:3000
 
 ## Deploy
 
-See **[DEPLOY.md](DEPLOY.md)** for GitHub Pages + domain setup.
+Repo is on GitHub: **HPTech1331/h2server**
+
+1. GitHub → **Settings** → **Pages**
+2. Source: **Deploy from a branch**
+3. Branch: **main**, folder: **/ (root)**
+4. Save — site URL: `https://HPTech1331.github.io/h2server/`
+
+Custom domain + DNS: see **[DEPLOY.md](DEPLOY.md)**.
