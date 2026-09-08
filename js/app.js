@@ -260,7 +260,7 @@ H2.getDefaultCompany = function () {
     if (saved) return saved;
   } catch (e) {}
   var cfg = H2.getBuiltInConfig();
-  return String(cfg.DEFAULT_COMPANY || "").trim();
+  return String(cfg.DEFAULT_COMPANY || "H2 TECHNOLOGY WORLD").trim();
 };
 
 H2.setDefaultCompany = function (v) {
@@ -273,7 +273,7 @@ H2.getDefaultProject = function () {
     if (saved) return saved;
   } catch (e) {}
   var cfg = H2.getBuiltInConfig();
-  return String(cfg.DEFAULT_PROJECT || "").trim();
+  return String(cfg.DEFAULT_PROJECT || "h2server.online").trim();
 };
 
 H2.setDefaultProject = function (v) {

@@ -23,7 +23,7 @@
     <div class="brand">
       <p class="badge">h2server.online</p>
       <h1>Hello</h1>
-      <p class="tagline"><span>H2 TECHNOLOGY WORLD</span></p>
+      <p class="tagline">Welcome to <span>H2 TECHNOLOGY WORLD</span></p>
       <p class="sub">Sign in to open the main dashboard.</p>
     </div>
 
@@ -72,7 +72,7 @@
   </main>
 
   <footer>
-    <span>&copy; <span id="year"></span> H2 Server · h2server.online</span>
+    <span>&copy; <span id="year"></span> H2 Server · H2 TECHNOLOGY WORLD · h2server.online</span>
   </footer>
 
   <script src="js/config.js"></script>
@@ -87,10 +87,10 @@
     }
 
     var toggle = document.getElementById("toggle-pass");
-    var pass = document.getElementById("password");
+    var passInput = document.getElementById("password");
     toggle.addEventListener("click", function () {
-      var show = pass.type === "password";
-      pass.type = show ? "text" : "password";
+      var show = passInput.type === "password";
+      passInput.type = show ? "text" : "password";
       toggle.textContent = show ? "Hide" : "Show";
       toggle.setAttribute("aria-label", show ? "Hide password" : "Show password");
     });
@@ -99,10 +99,10 @@
       e.preventDefault();
       var err = document.getElementById("form-error");
       var username = document.getElementById("username").value.trim();
-      var password = document.getElementById("password").value;
+      var passwordValue = document.getElementById("password").value;
       err.hidden = true;
 
-      if (!H2.validateLogin(username, password)) {
+      if (!H2.validateLogin(username, passwordValue)) {
         err.textContent = "Invalid username or password.";
         err.hidden = false;
         return;
