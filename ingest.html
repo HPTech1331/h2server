@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HTTP Ingest — H2 Server</title>
+  <meta name="theme-color" content="#070b14" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
+</head>
+<body class="page-ingest">
+  <main class="card ingest-card">
+    <p class="badge">HTTP ingest</p>
+    <h1 id="status-title">Receiving…</h1>
+    <p class="sub" id="status-msg">Saving data to the main page log.</p>
+    <pre id="payload" class="ingest-pre" hidden></pre>
+    <p class="hint"><a href="main.html">Open main page</a> to see the live list.</p>
+  </main>
+
+  <script src="js/app.js"></script>
+  <script>
+    (function () {
+      var params = new URLSearchParams(window.location.search);
+      var title = document.getElementById("status-title");
+      var msg = document.getElementById("status-msg");
+      var pre = document.getElementById("payload");
+
+      var payload = null;
+
+      if (params.has("data")) {
+        payload = params.get("data");
+      } else if (params.has("json")) {
+        var raw = params.get("json");
+        try {
+          payload = JSON.parse(raw);
+        } catch (e) {
+          payload = raw;
+        }
+      } else if ([].some.call(params.keys(), function () { return true; })) {
+        var obj = {};
+        params.forEach(function (value, key) {
+          obj[key] = value;
+        });
+        payload = obj;
+      }
+
+      if (payload === null || payload === "") {
+        title.textContent = "No data";
+        msg.textContent = "Add query params, e.g. ?data=hello or ?temp=24&hum=60";
+        return;
+      }
+
+      var entry = H2.pushData(payload, "http-get");
+      title.textContent = "Data received";
+      msg.textContent = "Saved at " + H2.formatTime(entry.at) + ". It now appears on the main page.";
+      pre.hidden = false;
+      pre.textContent =
+        typeof payload === "string" ? payload : JSON.stringify(payload, null, 2);
+
+      var wantsJson =
+        (params.get("format") || "").toLowerCase() === "json" ||
+        (window.location.hash || "").toLowerCase() === "#json";
+
+      if (wantsJson) {
+        document.body.textContent = JSON.stringify(
+          { ok: true, saved: entry },
+          null,
+          2
+        );
+        document.body.style.cssText =
+          "white-space:pre;font-family:ui-monospace,monospace;background:#070b14;color:#e8eefc;padding:1rem";
+      }
+    })();
+  </script>
+</body>
+</html>

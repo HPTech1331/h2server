@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Main — H2 Server | Electronics World</title>
+  <meta name="theme-color" content="#070b14" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+</head>
+<body class="page-main">
+  <div class="bg-grid" aria-hidden="true"></div>
+  <div class="glow glow-1" aria-hidden="true"></div>
+  <div class="glow glow-2" aria-hidden="true"></div>
+
+  <header class="topbar">
+    <div class="topbar-brand">
+      <span class="badge">h2server.online</span>
+      <strong>Electronics World</strong>
+    </div>
+    <div class="topbar-actions">
+      <span class="who" id="who"></span>
+      <button type="button" class="btn-ghost" id="logout-btn">Log out</button>
+    </div>
+  </header>
+
+  <main class="dashboard">
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Add user</h2>
+        <p>Create accounts that can sign in on the login page.</p>
+      </div>
+      <form id="add-user-form" class="stack-form">
+        <div class="field-row">
+          <div class="field">
+            <label for="new-username">Username</label>
+            <input id="new-username" type="text" required placeholder="new.user" spellcheck="false" />
+          </div>
+          <div class="field">
+            <label for="new-password">Password</label>
+            <input id="new-password" type="text" required placeholder="password" />
+          </div>
+          <div class="field">
+            <label for="new-role">Role</label>
+            <select id="new-role">
+              <option value="user">User</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+        </div>
+        <p class="form-error" id="user-error" hidden></p>
+        <p class="form-ok" id="user-ok" hidden></p>
+        <button type="submit" class="btn-primary">Add user</button>
+      </form>
+      <div class="table-wrap">
+        <table class="data-table" aria-label="Users">
+          <thead>
+            <tr>
+              <th>Username</th>
+              <th>Role</th>
+              <th>Created</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="users-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>HTTP data</h2>
+        <p>Open any complete link below (or from a device). Data appears in the live list.</p>
+      </div>
+
+      <div class="http-help">
+        <p class="label">Complete dummy links — click or copy</p>
+        <ul class="link-list" id="dummy-links"></ul>
+        <p class="hint">Same browser profile as the main page is required so localStorage is shared.</p>
+      </div>
+
+      <form id="manual-data-form" class="stack-form">
+        <div class="field">
+          <label for="manual-data">Send test data now</label>
+          <textarea id="manual-data" rows="3" placeholder='sensor=temp&value=24.5  or  {"temp":24.5}'></textarea>
+        </div>
+        <div class="btn-row">
+          <button type="submit" class="btn-primary">Push data</button>
+          <button type="button" class="btn-ghost" id="clear-data-btn">Clear log</button>
+          <button type="button" class="btn-ghost" id="refresh-data-btn">Refresh</button>
+        </div>
+      </form>
+
+      <div id="data-list" class="data-list" aria-live="polite"></div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <span>&copy; <span id="year"></span> H2 Server · main dashboard</span>
+  </footer>
+
+  <script src="js/app.js"></script>
+  <script>
+    if (!H2.requireAuth()) {
+      /* redirected */
+    } else {
+      document.getElementById("year").textContent = new Date().getFullYear();
+      var session = H2.getSession();
+      document.getElementById("who").textContent = session.username;
+
+      document.getElementById("logout-btn").addEventListener("click", function () {
+        H2.logout();
+        window.location.href = "index.html";
+      });
+
+      var base = window.location.href.replace(/main\.html.*$/i, "").replace(/#.*$/, "");
+      if (base.slice(-1) !== "/" && base.indexOf("?") === -1) {
+        /* keep folder base */
+      }
+      var originBase = window.location.origin + window.location.pathname.replace(/main\.html$/i, "");
+      if (!window.location.protocol || window.location.protocol === "file:") {
+        originBase = base;
+      }
+
+      var samples = [
+        originBase + "ingest.html?data=hello-from-device",
+        originBase + "ingest.html?temp=24.5&hum=60&device=ESP32",
+        originBase + "ingest.html?json=" + encodeURIComponent('{"temp":24.5,"hum":60,"device":"ESP32"}'),
+        originBase + "ingest.html?data=sensor=MQ2&value=412&unit=ppm"
+      ];
+
+      var list = document.getElementById("dummy-links");
+      list.innerHTML = samples
+        .map(function (url) {
+          return (
+            "<li><a href=\"" +
+            url.replace(/"/g, "&quot;") +
+            "\" target=\"_blank\" rel=\"noopener\">" +
+            H2.escapeHtml(url) +
+            "</a></li>"
+          );
+        })
+        .join("");
+
+      function renderUsers() {
+        var body = document.getElementById("users-body");
+        var users = H2.getUsers();
+        if (!users.length) {
+          body.innerHTML = '<tr><td colspan="4" class="empty">No users yet.</td></tr>';
+          return;
+        }
+        body.innerHTML = users
+          .map(function (u) {
+            var canDelete = u.username !== H2.ADMIN_USER;
+            return (
+              "<tr>" +
+              "<td><code>" + H2.escapeHtml(u.username) + "</code></td>" +
+              "<td>" + H2.escapeHtml(u.role || "user") + "</td>" +
+              "<td>" + H2.escapeHtml(H2.formatTime(u.createdAt)) + "</td>" +
+              "<td>" +
+              (canDelete
+                ? '<button type="button" class="btn-tiny" data-del="' + H2.escapeHtml(u.id) + '">Remove</button>'
+                : '<span class="muted">locked</span>') +
+              "</td>" +
+              "</tr>"
+            );
+          })
+          .join("");
+      }
+
+      function renderData() {
+        var box = document.getElementById("data-list");
+        var items = H2.getDataLog();
+        if (!items.length) {
+          box.innerHTML = '<p class="empty">No HTTP data yet. Open a dummy link above or push test data.</p>';
+          return;
+        }
+        box.innerHTML = items
+          .map(function (item) {
+            var raw =
+              typeof item.data === "string" ? item.data : JSON.stringify(item.data, null, 2);
+            return (
+              '<article class="data-item">' +
+              '<div class="data-meta">' +
+              "<span>" + H2.escapeHtml(H2.formatTime(item.at)) + "</span>" +
+              "<span class=\"src\">" + H2.escapeHtml(item.source || "http") + "</span>" +
+              "</div>" +
+              "<pre>" + H2.escapeHtml(raw) + "</pre>" +
+              "</article>"
+            );
+          })
+          .join("");
+      }
+
+      document.getElementById("add-user-form").addEventListener("submit", function (e) {
+        e.preventDefault();
+        var err = document.getElementById("user-error");
+        var ok = document.getElementById("user-ok");
+        err.hidden = true;
+        ok.hidden = true;
+        var result = H2.addUser(
+          document.getElementById("new-username").value,
+          document.getElementById("new-password").value,
+          document.getElementById("new-role").value
+        );
+        if (!result.ok) {
+          err.textContent = result.error;
+          err.hidden = false;
+          return;
+        }
+        ok.textContent = "User added.";
+        ok.hidden = false;
+        e.target.reset();
+        renderUsers();
+      });
+
+      document.getElementById("users-body").addEventListener("click", function (e) {
+        var btn = e.target.closest("[data-del]");
+        if (!btn) return;
+        H2.deleteUser(btn.getAttribute("data-del"));
+        renderUsers();
+      });
+
+      document.getElementById("manual-data-form").addEventListener("submit", function (e) {
+        e.preventDefault();
+        var text = document.getElementById("manual-data").value.trim();
+        if (!text) return;
+        H2.pushData(text, "manual");
+        document.getElementById("manual-data").value = "";
+        renderData();
+      });
+
+      document.getElementById("clear-data-btn").addEventListener("click", function () {
+        H2.clearData();
+        renderData();
+      });
+
+      document.getElementById("refresh-data-btn").addEventListener("click", renderData);
+
+      window.addEventListener("storage", function (e) {
+        if (e.key === H2.DATA_KEY || e.key === "h2_data_ping") renderData();
+      });
+
+      setInterval(renderData, 2000);
+
+      renderUsers();
+      renderData();
+    }
+  </script>
+</body>
+</html>
