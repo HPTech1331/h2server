@@ -8,6 +8,7 @@
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="icon" href="assets/h2-logo.svg" type="image/svg+xml" />
   <link rel="stylesheet" href="styles.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -20,8 +21,17 @@
 
   <header class="topbar">
     <div class="topbar-brand">
-      <span class="badge">h2server.online</span>
-      <strong>H2 TECHNOLOGY WORLD</strong>
+      <img
+        class="topbar-logo"
+        src="assets/h2-logo.svg"
+        width="48"
+        height="48"
+        alt="H2 Technology"
+      />
+      <div class="topbar-titles">
+        <span class="badge">h2server.online</span>
+        <strong>H2 TECHNOLOGY WORLD</strong>
+      </div>
     </div>
     <div class="topbar-actions">
       <span class="who" id="who"></span>
@@ -210,7 +220,6 @@
       }
       document.getElementById("who").textContent = whoLabel;
 
-      /* Show / hide by role */
       document.querySelectorAll(".admin-only").forEach(function (el) {
         el.hidden = !isAdmin;
       });
@@ -297,7 +306,6 @@
         if (liveEl) liveEl.textContent = "Updated · live every 5s";
       }
 
-      /* -------- Admin-only wiring -------- */
       if (isAdmin) {
         var sheetsUrlEl = document.getElementById("sheets-url");
         var defCompanyEl = document.getElementById("default-company");
@@ -563,13 +571,13 @@
         });
 
         renderUsers();
-      } else {
-        var userRefresh = document.getElementById("refresh-data-btn-user");
-        if (userRefresh) {
-          userRefresh.addEventListener("click", function () {
-            renderData(true);
-          });
-        }
+      }
+
+      var refreshUserBtn = document.getElementById("refresh-data-btn-user");
+      if (refreshUserBtn) {
+        refreshUserBtn.addEventListener("click", function () {
+          renderData(true);
+        });
       }
 
       window.addEventListener("storage", function (e) {
@@ -583,7 +591,9 @@
       });
 
       document.addEventListener("visibilitychange", function () {
-        if (document.visibilityState === "visible") renderData(true);
+        if (document.visibilityState === "visible") {
+          renderData(true);
+        }
       });
 
       renderData(true);

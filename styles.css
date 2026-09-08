@@ -149,6 +149,23 @@ textarea {
   text-align: center;
 }
 
+.brand-logo-wrap {
+  display: flex;
+  justify-content: center;
+  margin: 0 auto 1rem;
+}
+
+.brand-logo {
+  width: clamp(112px, 32vw, 160px);
+  height: auto;
+  aspect-ratio: 1;
+  border-radius: 18px;
+  object-fit: cover;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 12px 32px rgba(26, 35, 126, 0.45);
+}
+
 @keyframes rise {
   from {
     opacity: 0;
@@ -235,7 +252,7 @@ h1 {
   border-radius: 12px;
   padding: 0.78rem 0.9rem;
   font: inherit;
-  font-size: 16px; /* avoid iOS zoom */
+  font-size: 16px;
   outline: none;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
   -webkit-appearance: none;
@@ -422,10 +439,27 @@ footer,
 .topbar-brand {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 0.55rem 0.75rem;
+  flex-wrap: nowrap;
+  gap: 0.7rem 0.85rem;
   min-width: 0;
   flex: 1 1 auto;
+}
+
+.topbar-logo {
+  width: clamp(40px, 10vw, 48px);
+  height: clamp(40px, 10vw, 48px);
+  border-radius: 10px;
+  object-fit: cover;
+  flex: 0 0 auto;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+.topbar-titles {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+  min-width: 0;
 }
 
 .topbar-brand .badge {
@@ -559,7 +593,6 @@ footer,
   font-size: 0.9rem;
 }
 
-/* Mobile card-style users (no horizontal scroll needed) */
 .user-cards {
   display: none;
   gap: 0.65rem;
@@ -745,7 +778,6 @@ footer,
 
 /* ========== Breakpoints: phone / tablet / laptop ========== */
 
-/* Small phones */
 @media (max-width: 380px) {
   .topbar-actions {
     width: 100%;
@@ -762,7 +794,6 @@ footer,
   }
 }
 
-/* Phones (default stacking already) */
 @media (max-width: 640px) {
   .topbar {
     flex-direction: column;
@@ -797,7 +828,6 @@ footer,
   }
 }
 
-/* Tablet portrait / small landscape */
 @media (min-width: 641px) and (max-width: 900px) {
   .page-main {
     padding-left: max(1rem, var(--safe-left));
@@ -827,7 +857,6 @@ footer,
   }
 }
 
-/* Tablet landscape / laptop */
 @media (min-width: 901px) {
   .page-main {
     padding: 1.25rem 1.5rem 2rem;
@@ -865,7 +894,6 @@ footer,
   }
 }
 
-/* Wide laptop / desktop: two-column dashboard */
 @media (min-width: 1024px) {
   .dashboard {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
@@ -881,7 +909,6 @@ footer,
   }
 }
 
-/* Large screens */
 @media (min-width: 1280px) {
   :root {
     --max-dash: 1200px;
@@ -892,7 +919,6 @@ footer,
   }
 }
 
-/* Landscape phones */
 @media (max-height: 480px) and (orientation: landscape) {
   .page-login {
     justify-content: flex-start;
@@ -909,7 +935,6 @@ footer,
   }
 }
 
-/* Touch-friendly focus */
 @media (hover: none) and (pointer: coarse) {
   .btn-primary,
   .btn-ghost,
@@ -939,7 +964,6 @@ footer,
   }
 }
 
-/* Print (optional) */
 @media print {
   .bg-grid,
   .glow,

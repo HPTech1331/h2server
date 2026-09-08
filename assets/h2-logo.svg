@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="H2 Technology Industry 4.0">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1a237e"/>
+      <stop offset="55%" stop-color="#283593"/>
+      <stop offset="100%" stop-color="#5c6bc0"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="36" fill="url(#bg)"/>
+  <!-- Human hand (top right) -->
+  <g fill="none" stroke="#e8eaf6" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M420 70c-8 22-28 48-48 62"/>
+    <path d="M360 120c12 8 28 10 42 6"/>
+    <path d="M340 145c18 4 36 0 48-10"/>
+    <path d="M330 175c20 2 40-6 52-18"/>
+    <path d="M335 205c22-2 40-14 50-28"/>
+    <path d="M420 70c30 10 55 40 62 78"/>
+  </g>
+  <!-- Robot arm (bottom left) -->
+  <g fill="none" stroke="#e8eaf6" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M40 420c30-20 70-55 95-95"/>
+    <path d="M90 380c25-5 45-25 55-50"/>
+    <path d="M135 300c8-18 28-35 50-42"/>
+    <path d="M185 258c12-4 22-2 32 6"/>
+    <path d="M200 280c14-8 28-8 40 0"/>
+    <path d="M210 305c16-6 30-4 42 6"/>
+    <path d="M215 330c18-4 32 0 42 10"/>
+    <circle cx="100" cy="400" r="10"/>
+    <circle cx="130" cy="355" r="8"/>
+    <path d="M70 430h40v18H70z"/>
+  </g>
+  <!-- Title -->
+  <text x="256" y="250" text-anchor="middle" fill="#f5f7ff" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="42" font-weight="700" letter-spacing="4">H2 TECHNOLOGY</text>
+  <line x1="120" y1="278" x2="200" y2="278" stroke="#c5cae9" stroke-width="2"/>
+  <circle cx="110" cy="278" r="3" fill="#c5cae9"/>
+  <text x="256" y="286" text-anchor="middle" fill="#d1d5f0" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="22" letter-spacing="6">INDUSTRY 4.0</text>
+  <line x1="312" y1="278" x2="392" y2="278" stroke="#c5cae9" stroke-width="2"/>
+  <circle cx="402" cy="278" r="3" fill="#c5cae9"/>
+</svg>
