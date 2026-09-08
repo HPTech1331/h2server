@@ -1,5 +1,4 @@
-# Static site — do not use a Jekyll theme (avoids assets/ conflict on GitHub Pages)
-theme: null
+# Static HTML site for GitHub Pages (no Jekyll theme)
 plugins: []
 exclude:
   - node_modules
@@ -7,3 +6,6 @@ exclude:
   - package-lock.json
   - .gitignore
   - google-apps-script.js
+  - .github
+  - PAGES_FIX.md
+  - CNAME.example
