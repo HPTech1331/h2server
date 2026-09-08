@@ -1,8 +1,10 @@
 # h2server.online
 
-Login + main dashboard for **Electronics World** (static site, free on GitHub Pages).
+Login + main dashboard for **H2 TECHNOLOGY WORLD** (static site, free on GitHub Pages).
 
 **GitHub:** [https://github.com/HPTech1331/h2server](https://github.com/HPTech1331/h2server)
+
+---
 
 ## Login
 
@@ -13,46 +15,233 @@ Login + main dashboard for **Electronics World** (static site, free on GitHub Pa
 
 After sign-in you go to **main.html**.
 
-## Pages
+| Page | URL |
+|------|-----|
+| Live login | https://h2server.online/ |
+| Live main | https://h2server.online/main.html |
+| Local login | http://localhost:3000/ |
+| Local main | http://localhost:3000/main.html |
+
+---
+
+## What you need (checklist)
+
+| # | Item | Status / where |
+|---|------|----------------|
+| 1 | This website (GitHub Pages or `npm start`) | Repo + `index.html` / `main.html` / `ingest.html` |
+| 2 | Google account | Free |
+| 3 | Google Sheet | Link below |
+| 4 | Apps Script code | File `google-apps-script.js` (paste into Extensions → Apps Script) |
+| 5 | Web App deploy | Execute as **Me**, access **Anyone** |
+| 6 | Web App URL | Already saved in `js/config.js` |
+| 7 | Login on main page | Optional: click **Test connection** |
+
+---
+
+## Google Sheet — all links
+
+| What | Link |
+|------|------|
+| **Open the spreadsheet** | https://docs.google.com/spreadsheets/d/1FDX6ykEnS-gy__3QXHSv3B2Hpy2dKbrmMGsyP_9q5o4/edit?usp=sharing |
+| **Sheet ID** | `1FDX6ykEnS-gy__3QXHSv3B2Hpy2dKbrmMGsyP_9q5o4` |
+| **Apps Script Web App (API)** | https://script.google.com/macros/s/AKfycbxWNF1aGuAfLCHaxjO-ooLP1aOA-RGMa6DjfWcft8lJuUfUTrxB7uPVr6R4502nc5bdyQ/exec |
+| Config in project | `js/config.js` |
+| Script source to paste | `google-apps-script.js` |
+| Setup notes | `GOOGLE_SHEETS.md` |
+
+### Tabs inside the sheet
+
+| Tab name | Purpose |
+|----------|---------|
+| **Passwords** | Users: username, password, role, company, project |
+| **DATA__Company__Project** | One tab per company + project for HTTP/JSON sensor data |
+
+Example data tab name:
+
+```text
+DATA__H2 TECHNOLOGY WORLD__h2server.online
+```
+
+Default company / project (from config):
+
+| Field | Default value |
+|-------|----------------|
+| Company | `H2 TECHNOLOGY WORLD` |
+| Project | `h2server.online` |
+
+---
+
+## How to send JSON data (hit the API)
+
+Use **`ingest.html`** with query parameters.
+
+### Required for Google Sheets routing
+
+| Param | Meaning | Example |
+|-------|---------|---------|
+| `company` | Company name → part of sheet tab | `H2 TECHNOLOGY WORLD` |
+| `project` | Project name → part of sheet tab | `h2server.online` |
+| `json` **or** other fields | The payload | see below |
+
+### Method 1 — `json=` parameter (recommended)
+
+Put a full JSON object in the `json` query param.
+
+**Browser / device (GET):**
+
+```text
+https://h2server.online/ingest.html?company=H2%20TECHNOLOGY%20WORLD&project=h2server.online&json={"temp":24.5,"hum":60,"device":"ESP32"}
+```
+
+**URL-encoded (safer for devices / curl):**
+
+```text
+https://h2server.online/ingest.html?company=H2%20TECHNOLOGY%20WORLD&project=h2server.online&json=%7B%22temp%22%3A24.5%2C%22hum%22%3A60%2C%22device%22%3A%22ESP32%22%7D
+```
+
+**Local preview:**
+
+```text
+http://localhost:3000/ingest.html?company=H2%20TECHNOLOGY%20WORLD&project=h2server.online&json={"temp":24.5,"hum":60,"device":"ESP32"}
+```
+
+**curl example:**
+
+```bash
+curl -G "https://h2server.online/ingest.html" \
+  --data-urlencode "company=H2 TECHNOLOGY WORLD" \
+  --data-urlencode "project=h2server.online" \
+  --data-urlencode "json={\"temp\":24.5,\"hum\":60,\"device\":\"ESP32\"}"
+```
+
+**ESP32 / Arduino-style URL (encode JSON first):**
+
+```text
+http://h2server.online/ingest.html?company=Acme&project=IoT&json={"temp":24.5,"hum":60}
+```
+
+### Method 2 — plain fields (auto-packed as JSON-ish data)
+
+```text
+https://h2server.online/ingest.html?company=Acme&project=IoT&temp=24.5&hum=60&device=ESP32
+```
+
+### Method 3 — simple `data=` text
+
+```text
+https://h2server.online/ingest.html?company=Acme&project=IoT&data=hello-from-device
+```
+
+### Method 4 — open main page and push manually
+
+1. Login → **main.html**
+2. Set company + project
+3. Paste JSON in **Send test data** → **Push data**
+
+Example body:
+
+```json
+{"temp":24.5,"hum":60,"device":"ESP32"}
+```
+
+---
+
+## Ready-made links (copy / open)
+
+### Live site — JSON
+
+```text
+https://h2server.online/ingest.html?company=H2%20TECHNOLOGY%20WORLD&project=h2server.online&json={"temp":24.5,"hum":60,"device":"ESP32"}
+```
+
+```text
+https://h2server.online/ingest.html?company=H2%20TECHNOLOGY%20WORLD&project=h2server.online&json={"sensor":"MQ2","value":412,"unit":"ppm"}
+```
+
+### Live site — fields / text
+
+```text
+https://h2server.online/ingest.html?company=H2%20TECHNOLOGY%20WORLD&project=h2server.online&temp=24.5&hum=60&device=ESP32
+```
+
+```text
+https://h2server.online/ingest.html?company=H2%20TECHNOLOGY%20WORLD&project=h2server.online&data=hello-from-device
+```
+
+### Local (`npm start` → port 3000) — JSON
+
+```text
+http://localhost:3000/ingest.html?company=H2%20TECHNOLOGY%20WORLD&project=h2server.online&json={"temp":24.5,"hum":60,"device":"ESP32"}
+```
+
+```text
+http://localhost:3000/ingest.html?company=DemoCo&project=DemoProject&json={"temp":24.5,"hum":60}
+```
+
+### Local — fields / text
+
+```text
+http://localhost:3000/ingest.html?company=DemoCo&project=DemoProject&temp=24.5&hum=60&device=ESP32
+```
+
+```text
+http://localhost:3000/ingest.html?company=DemoCo&project=DemoProject&data=hello-from-device
+```
+
+---
+
+## After you hit a link
+
+1. Data is saved in the **browser** (local log on main page).
+2. If Apps Script is connected, a row is added to Google Sheet tab  
+   `DATA__<Company>__<Project>`.
+3. Login → **main.html** → see **HTTP data** list (live every few seconds).
+4. Open the [Google Sheet](https://docs.google.com/spreadsheets/d/1FDX6ykEnS-gy__3QXHSv3B2Hpy2dKbrmMGsyP_9q5o4/edit?usp=sharing) to confirm the cloud row.
+
+---
+
+## Where data is stored
+
+| Data | Storage |
+|------|---------|
+| Users / passwords (local) | Browser `localStorage` |
+| HTTP / JSON log (local) | Browser `localStorage` |
+| Users / passwords (cloud) | Google Sheet tab **Passwords** |
+| Sensor / JSON data (cloud) | Google Sheet tab **DATA__Company__Project** |
+
+---
+
+## Pages / files
 
 | File | Purpose |
 |------|---------|
 | `index.html` | Login |
-| `main.html` | Main page — **Add user** + **HTTP data** log |
-| `ingest.html` | HTTP data receiver (query string → main page) |
-| `js/app.js` | Shared logic (users, session, data log) |
+| `main.html` | Dashboard — Sheets settings, add user, HTTP data |
+| `ingest.html` | HTTP/JSON receiver (devices hit this) |
+| `js/config.js` | Sheet ID + Apps Script URL + defaults |
+| `js/app.js` | Shared logic |
+| `google-apps-script.js` | Paste into Google Apps Script |
+| `GOOGLE_SHEETS.md` | Sheets setup guide |
+| `LINKS.md` | Extra dummy links |
 | `styles.css` | Styling |
 | `CNAME` | Custom domain → h2server.online |
 
-## HTTP data
-
-Open (or call from a device):
-
-```text
-ingest.html?data=hello
-ingest.html?temp=24&hum=60
-ingest.html?json={"temp":24.5}
-```
-
-The payload is saved and shown live on the main page.
+---
 
 ## Preview on your PC
-
-Double-click `index.html`, or:
 
 ```bash
 npm start
 ```
 
-Then open http://localhost:3000
+Open http://localhost:3000
+
+---
 
 ## Deploy
 
-Repo is on GitHub: **HPTech1331/h2server**
+Repo: **HPTech1331/h2server** → Settings → Pages → branch `main` / root.
 
-1. GitHub → **Settings** → **Pages**
-2. Source: **Deploy from a branch**
-3. Branch: **main**, folder: **/ (root)**
-4. Save — site URL: `https://HPTech1331.github.io/h2server/`
-
-Custom domain + DNS: see **[DEPLOY.md](DEPLOY.md)**.
+- Custom domain: **[DEPLOY.md](DEPLOY.md)**
+- Google Sheets detail: **[GOOGLE_SHEETS.md](GOOGLE_SHEETS.md)**
+- More sample links: **[LINKS.md](LINKS.md)**

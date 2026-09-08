@@ -1,31 +1,88 @@
-# Complete HTTP data links (dummy examples)
+# Complete HTTP / JSON data links
 
-## Live site (custom domain)
+Login first (to view on main): user `H2@123` / pass `h2tech@123`  
+Main: https://h2server.online/main.html
 
-Simple message:
-https://h2server.online/ingest.html?data=hello-from-device
+Google Sheet:  
+https://docs.google.com/spreadsheets/d/1FDX6ykEnS-gy__3QXHSv3B2Hpy2dKbrmMGsyP_9q5o4/edit?usp=sharing
 
-Temperature + humidity:
-https://h2server.online/ingest.html?temp=24.5&hum=60&device=ESP32
+Apps Script Web App:  
+https://script.google.com/macros/s/AKfycbxWNF1aGuAfLCHaxjO-ooLP1aOA-RGMa6DjfWcft8lJuUfUTrxB7uPVr6R4502nc5bdyQ/exec
 
-JSON payload:
-https://h2server.online/ingest.html?json={"temp":24.5,"hum":60,"device":"ESP32"}
+---
 
-Sensor reading:
-https://h2server.online/ingest.html?data=sensor=MQ2&value=412&unit=ppm
+## How to hit with JSON
 
-## Local preview (npm start → port 3000)
+Use the `json=` query parameter (full object). Always send `company` + `project` so the row goes to the right sheet tab.
 
-Simple message:
-http://localhost:3000/ingest.html?data=hello-from-device
+### Pattern
 
-Temperature + humidity:
-http://localhost:3000/ingest.html?temp=24.5&hum=60&device=ESP32
+```text
+ingest.html?company=YOUR_COMPANY&project=YOUR_PROJECT&json={"key":"value","temp":24.5}
+```
 
-JSON payload:
-http://localhost:3000/ingest.html?json={"temp":24.5,"hum":60,"device":"ESP32"}
+### Live — JSON examples
+
+Temperature + humidity + device:
+
+```text
+https://h2server.online/ingest.html?company=H2%20TECHNOLOGY%20WORLD&project=h2server.online&json={"temp":24.5,"hum":60,"device":"ESP32"}
+```
+
+Gas sensor:
+
+```text
+https://h2server.online/ingest.html?company=H2%20TECHNOLOGY%20WORLD&project=h2server.online&json={"sensor":"MQ2","value":412,"unit":"ppm"}
+```
+
+Custom company/project:
+
+```text
+https://h2server.online/ingest.html?company=Acme&project=IoT&json={"temp":24.5,"hum":60,"device":"ESP32"}
+```
+
+### Live — non-JSON helpers
+
+```text
+https://h2server.online/ingest.html?company=H2%20TECHNOLOGY%20WORLD&project=h2server.online&temp=24.5&hum=60&device=ESP32
+```
+
+```text
+https://h2server.online/ingest.html?company=H2%20TECHNOLOGY%20WORLD&project=h2server.online&data=hello-from-device
+```
+
+### Local (npm start → port 3000) — JSON
+
+```text
+http://localhost:3000/ingest.html?company=H2%20TECHNOLOGY%20WORLD&project=h2server.online&json={"temp":24.5,"hum":60,"device":"ESP32"}
+```
+
+```text
+http://localhost:3000/ingest.html?company=DemoCo&project=DemoProject&json={"temp":24.5,"hum":60}
+```
+
+### Local — fields / text
+
+```text
+http://localhost:3000/ingest.html?company=DemoCo&project=DemoProject&temp=24.5&hum=60&device=ESP32
+```
+
+```text
+http://localhost:3000/ingest.html?company=DemoCo&project=DemoProject&data=hello-from-device
+```
+
+### curl (JSON)
+
+```bash
+curl -G "https://h2server.online/ingest.html" \
+  --data-urlencode "company=H2 TECHNOLOGY WORLD" \
+  --data-urlencode "project=h2server.online" \
+  --data-urlencode "json={\"temp\":24.5,\"hum\":60,\"device\":\"ESP32\"}"
+```
+
+---
 
 ## After you hit a link
 
-1. Login: index.html (user H2@123 / pass h2tech@123)
-2. Open main.html — the data appears under **HTTP data**
+1. Open main.html → **HTTP data** (local live list)
+2. Open Google Sheet → tab `DATA__Company__Project` for the cloud row

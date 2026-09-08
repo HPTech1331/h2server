@@ -2,9 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>HTTP Ingest — H2 Server</title>
   <meta name="theme-color" content="#070b14" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
   <link rel="stylesheet" href="styles.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -14,20 +16,25 @@
   <main class="card ingest-card">
     <p class="badge">HTTP ingest</p>
     <h1 id="status-title">Receiving…</h1>
-    <p class="sub" id="status-msg">Saving data to the main page log.</p>
+    <p class="sub" id="status-msg">Saving data locally and to Google Sheets.</p>
     <pre id="payload" class="ingest-pre" hidden></pre>
     <p class="hint"><a href="main.html">Open main page</a> to see the live list.</p>
   </main>
 
+  <script src="js/config.js"></script>
   <script src="js/app.js"></script>
   <script>
     (function () {
+      H2.applyBuiltInSheetsConfig();
+
       var params = new URLSearchParams(window.location.search);
       var title = document.getElementById("status-title");
       var msg = document.getElementById("status-msg");
       var pre = document.getElementById("payload");
 
       var payload = null;
+      var company = params.get("company") || params.get("co") || "";
+      var project = params.get("project") || params.get("proj") || "";
 
       if (params.has("data")) {
         payload = params.get("data");
@@ -41,20 +48,33 @@
       } else if ([].some.call(params.keys(), function () { return true; })) {
         var obj = {};
         params.forEach(function (value, key) {
+          var k = String(key).toLowerCase();
+          if (k === "company" || k === "co" || k === "project" || k === "proj" || k === "format") {
+            return;
+          }
           obj[key] = value;
         });
-        payload = obj;
+        if (Object.keys(obj).length) payload = obj;
       }
 
       if (payload === null || payload === "") {
         title.textContent = "No data";
-        msg.textContent = "Add query params, e.g. ?data=hello or ?temp=24&hum=60";
+        msg.textContent = "Add query params, e.g. ?company=Acme&project=IoT&json={\"temp\":24}";
         return;
       }
 
-      var entry = H2.pushData(payload, "http-get");
+      var entry = H2.pushData(payload, {
+        source: "http-get",
+        company: company,
+        project: project,
+      });
+
       title.textContent = "Data received";
-      msg.textContent = "Saved at " + H2.formatTime(entry.at) + ". It now appears on the main page.";
+      msg.textContent =
+        "Saved at " +
+        H2.formatTime(entry.at) +
+        (H2.isSheetsConfigured() ? " · sent to Google Sheets" : " · local only") +
+        ".";
       pre.hidden = false;
       pre.textContent =
         typeof payload === "string" ? payload : JSON.stringify(payload, null, 2);
@@ -65,7 +85,11 @@
 
       if (wantsJson) {
         document.body.textContent = JSON.stringify(
-          { ok: true, saved: entry },
+          {
+            ok: true,
+            saved: entry,
+            sheets: H2.isSheetsConfigured(),
+          },
           null,
           2
         );
